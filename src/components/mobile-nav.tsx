@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -33,10 +34,11 @@ export default function MobileNav() {
       <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} className="shrink-0">
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2 flex-1">
         <Home className="h-4 w-4" />
         <span className="font-semibold text-sm">Homestead Manager</span>
       </div>
+      <ThemeToggle />
 
       {/* Dropdown nav */}
       {open && (

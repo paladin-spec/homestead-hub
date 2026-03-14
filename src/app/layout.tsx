@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/sonner";
 import AppSidebar from "@/components/app-sidebar";
 import MobileNav from "@/components/mobile-nav";
+import { ThemeProvider } from "@/components/theme-provider";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,21 +28,23 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
-        <div className="flex h-screen overflow-hidden">
-          {/* Desktop sidebar */}
-          <AppSidebar />
-          {/* Main content */}
-          <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
-            {/* Mobile top nav */}
-            <MobileNav />
-            <main className="flex-1 overflow-y-auto p-4 md:p-6">
-              {children}
-            </main>
+        <ThemeProvider>
+          <div className="flex h-screen overflow-hidden">
+            {/* Desktop sidebar */}
+            <AppSidebar />
+            {/* Main content */}
+            <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
+              {/* Mobile top nav */}
+              <MobileNav />
+              <main className="flex-1 overflow-y-auto p-4 md:p-6">
+                {children}
+              </main>
+            </div>
           </div>
-        </div>
-        <Toaster richColors />
+          <Toaster richColors />
+        </ThemeProvider>
         {/* WARNING FOR AGENT: DO NOT REMOVE THIS SCRIPT */}
         <Script src="https://cdn.jsdelivr.net/gh/IdeavoAI/ideavo-scripts@latest/scripts/ideavo.min.js" />
       </body>

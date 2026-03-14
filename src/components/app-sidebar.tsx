@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   Home,
 } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 const navItems = [
   { href: "/", icon: LayoutDashboard, label: "Dashboard" },
@@ -53,8 +54,9 @@ export default function AppSidebar() {
         })}
       </nav>
 
-      <div className="px-5 py-4 border-t text-xs text-muted-foreground">
-        Synced to cloud
+      <div className="px-5 py-3 border-t flex items-center justify-between">
+        <span className="text-xs text-muted-foreground">Synced to cloud</span>
+        <ThemeToggle />
       </div>
     </aside>
   )
