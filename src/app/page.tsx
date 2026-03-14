@@ -7,7 +7,14 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { Sprout, Bird, Flame, Wrench, Home, Pencil, Check, X } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Sprout, Bird, Flame, Wrench, Home, Pencil, Check, X, Plus, Egg } from "lucide-react"
 import Link from "next/link"
 
 interface HomesteadData {
@@ -33,6 +40,16 @@ export default function DashboardPage() {
   const [form, setForm] = useState({ name: "", location: "", description: "" })
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+
+  // Quick-add plant
+  const [plantOpen, setPlantOpen] = useState(false)
+  const [plantForm, setPlantForm] = useState({ name: "", variety: "", location: "", plantedDate: "" })
+  const [plantSubmitting, setPlantSubmitting] = useState(false)
+
+  // Quick-add egg collection
+  const [eggOpen, setEggOpen] = useState(false)
+  const [eggForm, setEggForm] = useState({ count: "", notes: "" })
+  const [eggSubmitting, setEggSubmitting] = useState(false)
 
   useEffect(() => {
     fetchAll()
@@ -104,6 +121,54 @@ export default function DashboardPage() {
       toast.error("Failed to save homestead settings")
     } finally {
       setSaving(false)
+    }
+  }
+
+  async function quickAddPlant() {
+    if (!plantForm.name.trim()) { toast.error("Plant name is required"); return }
+    setPlantSubmitting(true)
+    try {
+      const res = await fetch("/api/plants", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: plantForm.name,
+          variety: plantForm.variety || null,
+          location: plantForm.location || null,
+          plantedDate: plantForm.plantedDate || null,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      setStats(s => ({ ...s, plants: s.plants + 1 }))
+      setPlantForm({ name: "", variety: "", location: "", plantedDate: "" })
+      setPlantOpen(false)
+      toast.success(`${plantForm.name} added`)
+    } catch {
+      toast.error("Failed to add plant")
+    } finally {
+      setPlantSubmitting(false)
+    }
+  }
+
+  async function quickLogEggs() {
+    const count = parseInt(eggForm.count)
+    if (!count || count < 1) { toast.error("Enter a valid egg count"); return }
+    setEggSubmitting(true)
+    try {
+      const res = await fetch("/api/eggs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ count, notes: eggForm.notes || null }),
+      })
+      if (!res.ok) throw new Error()
+      setStats(s => ({ ...s, eggs: s.eggs + count }))
+      setEggForm({ count: "", notes: "" })
+      setEggOpen(false)
+      toast.success(`${count} egg${count !== 1 ? "s" : ""} logged`)
+    } catch {
+      toast.error("Failed to log eggs")
+    } finally {
+      setEggSubmitting(false)
     }
   }
 
@@ -184,9 +249,47 @@ export default function DashboardPage() {
         <Link href="/plants">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Sprout className="h-4 w-4 text-green-600" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Plants</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sprout className="h-4 w-4 text-green-600" />
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Plants</CardTitle>
+                </div>
+                <Dialog open={plantOpen} onOpenChange={setPlantOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); setPlantOpen(true) }}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm" onClick={e => e.stopPropagation()}>
+                    <DialogHeader>
+                      <DialogTitle>Add Plant</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="qp-name">Name *</Label>
+                        <Input id="qp-name" value={plantForm.name} onChange={e => setPlantForm(f => ({ ...f, name: e.target.value }))} className="mt-1" placeholder="Tomato" />
+                      </div>
+                      <div>
+                        <Label htmlFor="qp-variety">Variety</Label>
+                        <Input id="qp-variety" value={plantForm.variety} onChange={e => setPlantForm(f => ({ ...f, variety: e.target.value }))} className="mt-1" placeholder="Cherokee Purple" />
+                      </div>
+                      <div>
+                        <Label htmlFor="qp-location">Location</Label>
+                        <Input id="qp-location" value={plantForm.location} onChange={e => setPlantForm(f => ({ ...f, location: e.target.value }))} className="mt-1" placeholder="Raised bed 2" />
+                      </div>
+                      <div>
+                        <Label htmlFor="qp-date">Planted Date</Label>
+                        <Input id="qp-date" type="date" value={plantForm.plantedDate} onChange={e => setPlantForm(f => ({ ...f, plantedDate: e.target.value }))} className="mt-1" />
+                      </div>
+                      <Button className="w-full" onClick={quickAddPlant} disabled={plantSubmitting}>Add Plant</Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>
@@ -199,9 +302,41 @@ export default function DashboardPage() {
         <Link href="/chickens">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Bird className="h-4 w-4 text-amber-600" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Chickens</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Bird className="h-4 w-4 text-amber-600" />
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Chickens</CardTitle>
+                </div>
+                <Dialog open={eggOpen} onOpenChange={setEggOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); setEggOpen(true) }}
+                    >
+                      <Egg className="h-3.5 w-3.5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm" onClick={e => e.stopPropagation()}>
+                    <DialogHeader>
+                      <DialogTitle>Log Egg Collection</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <Label htmlFor="qe-count">Egg Count *</Label>
+                        <Input id="qe-count" type="number" min="1" value={eggForm.count} onChange={e => setEggForm(f => ({ ...f, count: e.target.value }))} className="mt-1" placeholder="0" />
+                      </div>
+                      <div>
+                        <Label htmlFor="qe-notes">Notes</Label>
+                        <Input id="qe-notes" value={eggForm.notes} onChange={e => setEggForm(f => ({ ...f, notes: e.target.value }))} className="mt-1" placeholder="Any notes..." />
+                      </div>
+                      <Button className="w-full" onClick={quickLogEggs} disabled={eggSubmitting}>
+                        <Egg className="h-4 w-4 mr-1" /> Log Eggs
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>

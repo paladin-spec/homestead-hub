@@ -14,7 +14,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Flame, Trash2, Plus } from "lucide-react"
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Flame, Trash2, Plus, PackagePlus } from "lucide-react"
 import { format } from "date-fns"
 
 interface FirewoodEntry {
@@ -52,6 +59,11 @@ export default function FirewoodPage() {
   const [loading, setLoading] = useState(true)
   const [submitting, setSubmitting] = useState(false)
 
+  // Quick-add: enter cords directly, no calculator
+  const [quickOpen, setQuickOpen] = useState(false)
+  const [quickForm, setQuickForm] = useState({ species: "Oak (White)", cords: "", notes: "" })
+  const [quickSubmitting, setQuickSubmitting] = useState(false)
+
   const [form, setForm] = useState({
     species: "Oak (White)",
     diameterInches: "",
@@ -82,8 +94,41 @@ export default function FirewoodPage() {
     }
   }, [form.diameterInches, form.lengthInches, form.pieceCount])
 
+  async function quickAddEntry() {
+    const cords = parseFloat(quickForm.cords)
+    if (!cords || cords <= 0) { toast.error("Enter a valid cord amount"); return }
+    setQuickSubmitting(true)
+    try {
+      // Back-calculate a length from the desired cords using a 1" diameter reference log.
+      // cords = π*(r_ft)² * lengthFt / 80  →  lengthFt = cords*80 / (π*(0.5/12)²)
+      const radiusFt = 0.5 / 12
+      const lengthIn = ((cords * 80) / (Math.PI * radiusFt * radiusFt)) * 12
+
+      const res = await fetch("/api/firewood", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          species: quickForm.species,
+          diameterInches: 1,
+          lengthInches: parseFloat(lengthIn.toFixed(4)),
+          pieceCount: 1,
+          notes: quickForm.notes || null,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      const created = await res.json()
+      setEntries(prev => [created, ...prev])
+      setQuickForm(f => ({ ...f, cords: "", notes: "" }))
+      setQuickOpen(false)
+      toast.success(`${cords} cord${cords !== 1 ? "s" : ""} added`)
+    } catch {
+      toast.error("Failed to add firewood entry")
+    } finally {
+      setQuickSubmitting(false)
+    }
+  }
+
   async function fetchEntries() {
-    setLoading(true)
     try {
       const res = await fetch("/api/firewood")
       setEntries(await res.json())
@@ -148,9 +193,64 @@ export default function FirewoodPage() {
 
   return (
     <div className="max-w-2xl mx-auto space-y-5">
-      <div className="flex items-center gap-2">
-        <Flame className="h-5 w-5 text-orange-600" />
-        <h1 className="text-xl font-bold">Firewood</h1>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Flame className="h-5 w-5 text-orange-600" />
+          <h1 className="text-xl font-bold">Firewood</h1>
+        </div>
+        <Dialog open={quickOpen} onOpenChange={setQuickOpen}>
+          <DialogTrigger asChild>
+            <Button size="sm" variant="outline">
+              <PackagePlus className="h-4 w-4 mr-1" /> Quick Add
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Quick Add Firewood</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-3">
+              <div>
+                <Label className="text-xs">Wood Species</Label>
+                <Select value={quickForm.species} onValueChange={v => setQuickForm(f => ({ ...f, species: v }))}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60">
+                    {WOOD_SPECIES.map(s => (
+                      <SelectItem key={s} value={s}>{s}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label htmlFor="qa-cords">Cords *</Label>
+                <Input
+                  id="qa-cords"
+                  type="number"
+                  step="0.25"
+                  min="0.01"
+                  placeholder="0.5"
+                  value={quickForm.cords}
+                  onChange={e => setQuickForm(f => ({ ...f, cords: e.target.value }))}
+                  className="mt-1"
+                />
+              </div>
+              <div>
+                <Label htmlFor="qa-notes">Notes</Label>
+                <Input
+                  id="qa-notes"
+                  value={quickForm.notes}
+                  onChange={e => setQuickForm(f => ({ ...f, notes: e.target.value }))}
+                  className="mt-1"
+                  placeholder="Location, condition, etc."
+                />
+              </div>
+              <Button className="w-full" onClick={quickAddEntry} disabled={quickSubmitting}>
+                <Flame className="h-4 w-4 mr-1" /> Add Entry
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
 
       {/* Summary */}
