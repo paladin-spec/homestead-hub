@@ -14,7 +14,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog"
-import { Sprout, Bird, Flame, Wrench, Home, Pencil, Check, X, Plus, Egg } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Sprout, Bird, Flame, Wrench, Home, Pencil, Check, X, Plus, Egg, PackagePlus } from "lucide-react"
 import Link from "next/link"
 import DashboardSearch from "@/components/dashboard-search"
 
@@ -51,6 +58,21 @@ export default function DashboardPage() {
   const [eggOpen, setEggOpen] = useState(false)
   const [eggForm, setEggForm] = useState({ count: "", notes: "" })
   const [eggSubmitting, setEggSubmitting] = useState(false)
+
+  // Quick-add firewood
+  const [firewoodOpen, setFirewoodOpen] = useState(false)
+  const [firewoodForm, setFirewoodForm] = useState({ species: "Oak (White)", cords: "", notes: "" })
+  const [firewoodSubmitting, setFirewoodSubmitting] = useState(false)
+
+  const WOOD_SPECIES = [
+    "Apple", "Ash (Green)", "Ash (White)", "Aspen", "Basswood", "Beech",
+    "Black Birch", "Black Cherry", "Black Locust", "Catalpa", "Cedar (Red)",
+    "Cedar (White)", "Cherry", "Cottonwood", "Douglas Fir", "Elm (American)",
+    "Hard Maple", "Hickory", "Oak (Red)", "Oak (White)", "Osage Orange",
+    "Paper Birch", "Pine (Eastern White)", "Pine (Red)", "Red Alder", "Red Maple",
+    "Soft Maple", "Spruce", "Sycamore", "Tamarack", "Walnut", "Willow",
+    "Yellow Birch",
+  ]
 
   useEffect(() => {
     fetchAll()
@@ -170,6 +192,33 @@ export default function DashboardPage() {
       toast.error("Failed to log eggs")
     } finally {
       setEggSubmitting(false)
+    }
+  }
+
+  async function quickAddFirewood() {
+    const cords = parseFloat(firewoodForm.cords)
+    if (!cords || cords <= 0) { toast.error("Enter a valid cord amount"); return }
+    setFirewoodSubmitting(true)
+    try {
+      const res = await fetch("/api/firewood", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          species: firewoodForm.species,
+          cords,
+          cordsDirectEntry: true,
+          notes: firewoodForm.notes || null,
+        }),
+      })
+      if (!res.ok) throw new Error()
+      setStats(s => ({ ...s, firewood: s.firewood + 1, totalCords: s.totalCords + cords }))
+      setFirewoodForm(f => ({ ...f, cords: "", notes: "" }))
+      setFirewoodOpen(false)
+      toast.success(`${cords} cord${cords !== 1 ? "s" : ""} added`)
+    } catch {
+      toast.error("Failed to add firewood")
+    } finally {
+      setFirewoodSubmitting(false)
     }
   }
 
@@ -352,9 +401,69 @@ export default function DashboardPage() {
         <Link href="/firewood">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">
             <CardHeader className="pb-2">
-              <div className="flex items-center gap-2">
-                <Flame className="h-4 w-4 text-orange-600" />
-                <CardTitle className="text-sm font-medium text-muted-foreground">Firewood</CardTitle>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Flame className="h-4 w-4 text-orange-600" />
+                  <CardTitle className="text-sm font-medium text-muted-foreground">Firewood</CardTitle>
+                </div>
+                <Dialog open={firewoodOpen} onOpenChange={setFirewoodOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 shrink-0"
+                      onClick={e => { e.preventDefault(); e.stopPropagation(); setFirewoodOpen(true) }}
+                    >
+                      <PackagePlus className="h-3.5 w-3.5" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-sm" onClick={e => e.stopPropagation()}>
+                    <DialogHeader>
+                      <DialogTitle>Quick Add Firewood</DialogTitle>
+                    </DialogHeader>
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-xs">Wood Species</Label>
+                        <Select value={firewoodForm.species} onValueChange={v => setFirewoodForm(f => ({ ...f, species: v }))}>
+                          <SelectTrigger className="mt-1">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent className="max-h-60">
+                            {WOOD_SPECIES.map(s => (
+                              <SelectItem key={s} value={s}>{s}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div>
+                        <Label htmlFor="dash-fw-cords">Cords *</Label>
+                        <Input
+                          id="dash-fw-cords"
+                          type="number"
+                          step="0.25"
+                          min="0.01"
+                          placeholder="0.5"
+                          value={firewoodForm.cords}
+                          onChange={e => setFirewoodForm(f => ({ ...f, cords: e.target.value }))}
+                          className="mt-1"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="dash-fw-notes">Notes</Label>
+                        <Input
+                          id="dash-fw-notes"
+                          value={firewoodForm.notes}
+                          onChange={e => setFirewoodForm(f => ({ ...f, notes: e.target.value }))}
+                          className="mt-1"
+                          placeholder="Location, condition, etc."
+                        />
+                      </div>
+                      <Button className="w-full" onClick={quickAddFirewood} disabled={firewoodSubmitting}>
+                        <Flame className="h-4 w-4 mr-1" /> Add Entry
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardHeader>
             <CardContent>

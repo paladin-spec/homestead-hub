@@ -77,11 +77,29 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const diameter = Number(body.diameterInches)
-    const length = Number(body.lengthInches)
-    const pieces = Number(body.pieceCount ?? 1)
-    const cords = calculateCords(diameter, length, pieces)
-    const btu = calculateBTU(body.species, cords)
+
+    let cordsEstimate: number
+    let btu: number | null
+    let diameter: number
+    let length: number
+    let pieces: number
+
+    if (body.cordsDirectEntry) {
+      // Quick-add path: user supplied cords directly, no cylinder math needed
+      cordsEstimate = Number(body.cords)
+      btu = calculateBTU(body.species, cordsEstimate)
+      // Store sentinel values so the entry is clearly a direct entry
+      diameter = 0
+      length = 0
+      pieces = 1
+    } else {
+      // Calculator path: derive cords from dimensions
+      diameter = Number(body.diameterInches)
+      length = Number(body.lengthInches)
+      pieces = Number(body.pieceCount ?? 1)
+      cordsEstimate = calculateCords(diameter, length, pieces)
+      btu = calculateBTU(body.species, cordsEstimate)
+    }
 
     const created = await db
       .insert(firewoodEntries)
@@ -90,7 +108,7 @@ export async function POST(request: Request) {
         diameterInches: String(diameter),
         lengthInches: String(length),
         pieceCount: pieces,
-        cordsEstimate: String(cords),
+        cordsEstimate: String(cordsEstimate),
         btuEstimate: btu !== null ? String(btu) : null,
         notes: body.notes ?? null,
         collectedAt: body.collectedAt ? new Date(body.collectedAt) : new Date(),

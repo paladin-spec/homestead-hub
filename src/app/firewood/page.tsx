@@ -99,19 +99,13 @@ export default function FirewoodPage() {
     if (!cords || cords <= 0) { toast.error("Enter a valid cord amount"); return }
     setQuickSubmitting(true)
     try {
-      // Back-calculate a length from the desired cords using a 1" diameter reference log.
-      // cords = π*(r_ft)² * lengthFt / 80  →  lengthFt = cords*80 / (π*(0.5/12)²)
-      const radiusFt = 0.5 / 12
-      const lengthIn = ((cords * 80) / (Math.PI * radiusFt * radiusFt)) * 12
-
       const res = await fetch("/api/firewood", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           species: quickForm.species,
-          diameterInches: 1,
-          lengthInches: parseFloat(lengthIn.toFixed(4)),
-          pieceCount: 1,
+          cords,
+          cordsDirectEntry: true,
           notes: quickForm.notes || null,
         }),
       })
@@ -372,8 +366,10 @@ export default function FirewoodPage() {
                 <div className="min-w-0">
                   <div className="font-medium text-sm">{entry.species}</div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {entry.diameterInches}&quot; dia × {entry.lengthInches}&quot; long
-                    {entry.pieceCount > 1 && ` × ${entry.pieceCount} pieces`}
+                    {parseFloat(entry.diameterInches) === 0
+                      ? "Direct entry"
+                      : `${entry.diameterInches}" dia × ${entry.lengthInches}" long${entry.pieceCount > 1 ? ` × ${entry.pieceCount} pieces` : ""}`
+                    }
                   </div>
                   <div className="flex flex-wrap gap-3 mt-1">
                     <span className="text-xs font-medium text-orange-600">
