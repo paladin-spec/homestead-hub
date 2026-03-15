@@ -22,7 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Sprout, Plus, Droplets, Leaf, MapPin, Trash2, ChevronDown, ChevronUp, Pencil, Check, X } from "lucide-react"
+import { Sprout, Plus, Droplets, Leaf, MapPin, Trash2, ChevronDown, ChevronUp, Pencil, Check, X, ArrowRightLeft } from "lucide-react"
 import { format } from "date-fns"
 
 interface PlantLog {
@@ -53,9 +53,10 @@ const STAGE_CONFIG: Record<Stage, { label: string; color: string; icon: string }
 }
 
 const LOG_TYPE_STYLES: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  watering:    { label: "Watered",    color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",   icon: <Droplets className="h-3 w-3" /> },
-  fertilizing: { label: "Fertilized", color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300", icon: <Leaf className="h-3 w-3" /> },
-  note:        { label: "Note",       color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",     icon: <Sprout className="h-3 w-3" /> },
+  watering:     { label: "Watered",       color: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",       icon: <Droplets className="h-3 w-3" /> },
+  fertilizing:  { label: "Fertilized",    color: "bg-green-100 text-green-800 dark:bg-green-900/40 dark:text-green-300",   icon: <Leaf className="h-3 w-3" /> },
+  note:         { label: "Note",          color: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",          icon: <Sprout className="h-3 w-3" /> },
+  stage_change: { label: "Stage Updated", color: "bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300", icon: <ArrowRightLeft className="h-3 w-3" /> },
 }
 
 function StageBadge({ stage }: { stage: string }) {
@@ -78,6 +79,10 @@ export default function PlantsPage() {
   // Inline stage/count editing state
   const [editingId, setEditingId] = useState<number | null>(null)
   const [editForm, setEditForm] = useState<Record<number, { stage: string; plantCount: string }>>({})
+
+  // Inline log-note editing state
+  const [editingLogId, setEditingLogId] = useState<number | null>(null)
+  const [editingLogNote, setEditingLogNote] = useState("")
 
   const [form, setForm] = useState({
     name: "",
@@ -136,6 +141,10 @@ export default function PlantsPage() {
     if (!ef) return
     const count = parseInt(ef.plantCount)
     if (!count || count < 1) { toast.error("Plant count must be at least 1"); return }
+
+    const stageChanged = ef.stage !== plant.stage
+    const countChanged = count !== plant.plantCount
+
     try {
       const res = await fetch(`/api/plants/${plant.id}`, {
         method: "PUT",
@@ -155,6 +164,24 @@ export default function PlantsPage() {
       setPlants(prev => prev.map(p => p.id === plant.id ? updated : p))
       setEditingId(null)
       toast.success("Plant updated")
+
+      // Auto-log the change if anything actually changed
+      if (stageChanged || countChanged) {
+        const parts: string[] = []
+        if (stageChanged) parts.push(`Stage → ${STAGE_CONFIG[ef.stage as Stage]?.label ?? ef.stage}`)
+        if (countChanged) parts.push(`Count → ${count}`)
+        const logNotes = parts.join(", ")
+
+        const logRes = await fetch(`/api/plants/${plant.id}/logs`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ type: "stage_change", notes: logNotes }),
+        })
+        if (logRes.ok) {
+          const newLog = await logRes.json()
+          setLogs(prev => ({ ...prev, [plant.id]: [newLog, ...(prev[plant.id] ?? [])] }))
+        }
+      }
     } catch {
       toast.error("Failed to update plant")
     }
@@ -200,6 +227,27 @@ export default function PlantsPage() {
       toast.success(`${name} removed`)
     } catch {
       toast.error("Failed to delete plant")
+    }
+  }
+
+  async function saveLogNote(plantId: number, logId: number) {
+    try {
+      const res = await fetch(`/api/plants/${plantId}/logs/${logId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: editingLogNote }),
+      })
+      if (!res.ok) throw new Error()
+      const updated = await res.json()
+      setLogs(prev => ({
+        ...prev,
+        [plantId]: (prev[plantId] ?? []).map(l => l.id === logId ? updated : l),
+      }))
+      setEditingLogId(null)
+      setEditingLogNote("")
+      toast.success("Log note updated")
+    } catch {
+      toast.error("Failed to update log note")
     }
   }
 
@@ -444,15 +492,57 @@ export default function PlantsPage() {
                     )}
                     {(logs[plant.id] ?? []).map(log => {
                       const style = LOG_TYPE_STYLES[log.type] ?? LOG_TYPE_STYLES.note
+                      const isEditingThisLog = editingLogId === log.id
                       return (
-                        <div key={log.id} className="flex items-start gap-2 text-xs">
-                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-medium ${style.color}`}>
+                        <div key={log.id} className="flex items-start gap-2 text-xs group">
+                          <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-medium shrink-0 ${style.color}`}>
                             {style.icon} {style.label}
                           </span>
-                          <span className="text-muted-foreground">
+                          <span className="text-muted-foreground shrink-0">
                             {format(new Date(log.loggedAt), "MMM d, h:mm a")}
                           </span>
-                          {log.notes && <span className="text-foreground">{log.notes}</span>}
+                          {isEditingThisLog ? (
+                            <div className="flex items-center gap-1 flex-1">
+                              <Input
+                                className="h-6 text-xs py-0 px-1.5 flex-1"
+                                value={editingLogNote}
+                                onChange={e => setEditingLogNote(e.target.value)}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") saveLogNote(plant.id, log.id)
+                                  if (e.key === "Escape") { setEditingLogId(null); setEditingLogNote("") }
+                                }}
+                                autoFocus
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-5 w-5 text-green-600"
+                                onClick={() => saveLogNote(plant.id, log.id)}
+                              >
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-5 w-5"
+                                onClick={() => { setEditingLogId(null); setEditingLogNote("") }}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="flex items-center gap-1 flex-1 min-w-0">
+                              {log.notes && <span className="text-foreground truncate">{log.notes}</span>}
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-5 w-5 opacity-0 group-hover:opacity-60 hover:!opacity-100 shrink-0"
+                                onClick={() => { setEditingLogId(log.id); setEditingLogNote(log.notes ?? "") }}
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       )
                     })}
