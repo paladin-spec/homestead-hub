@@ -31,6 +31,8 @@ export const plants = pgTable("plants", {
   variety: varchar("variety", { length: 255 }),
   location: varchar("location", { length: 255 }),
   plantedDate: date("planted_date"),
+  stage: varchar("stage", { length: 50 }).default("seeded").notNull(), // 'seeded' | 'seedling' | 'mature'
+  plantCount: integer("plant_count").default(1).notNull(),
   notes: text("notes"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

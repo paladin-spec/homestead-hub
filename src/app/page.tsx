@@ -51,7 +51,7 @@ export default function DashboardPage() {
 
   // Quick-add plant
   const [plantOpen, setPlantOpen] = useState(false)
-  const [plantForm, setPlantForm] = useState({ name: "", variety: "", location: "", plantedDate: "" })
+  const [plantForm, setPlantForm] = useState({ name: "", variety: "", location: "", plantedDate: "", stage: "seeded", plantCount: "1" })
   const [plantSubmitting, setPlantSubmitting] = useState(false)
 
   // Quick-add egg collection
@@ -149,6 +149,8 @@ export default function DashboardPage() {
 
   async function quickAddPlant() {
     if (!plantForm.name.trim()) { toast.error("Plant name is required"); return }
+    const count = parseInt(plantForm.plantCount)
+    if (!count || count < 1) { toast.error("Plant count must be at least 1"); return }
     setPlantSubmitting(true)
     try {
       const res = await fetch("/api/plants", {
@@ -159,11 +161,13 @@ export default function DashboardPage() {
           variety: plantForm.variety || null,
           location: plantForm.location || null,
           plantedDate: plantForm.plantedDate || null,
+          stage: plantForm.stage,
+          plantCount: count,
         }),
       })
       if (!res.ok) throw new Error()
       setStats(s => ({ ...s, plants: s.plants + 1 }))
-      setPlantForm({ name: "", variety: "", location: "", plantedDate: "" })
+      setPlantForm({ name: "", variety: "", location: "", plantedDate: "", stage: "seeded", plantCount: "1" })
       setPlantOpen(false)
       toast.success(`${plantForm.name} added`)
     } catch {
@@ -337,6 +341,33 @@ export default function DashboardPage() {
                       <div>
                         <Label htmlFor="qp-date">Planted Date</Label>
                         <Input id="qp-date" type="date" value={plantForm.plantedDate} onChange={e => setPlantForm(f => ({ ...f, plantedDate: e.target.value }))} className="mt-1" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        <div>
+                          <Label className="text-xs">Stage</Label>
+                          <Select value={plantForm.stage} onValueChange={v => setPlantForm(f => ({ ...f, stage: v }))}>
+                            <SelectTrigger className="mt-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="seeded">🌱 Seeded</SelectItem>
+                              <SelectItem value="seedling">🌿 Seedling</SelectItem>
+                              <SelectItem value="mature">🌳 Mature Plant</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label htmlFor="qp-count" className="text-xs">Plant Count</Label>
+                          <Input
+                            id="qp-count"
+                            type="number"
+                            min="1"
+                            value={plantForm.plantCount}
+                            onChange={e => setPlantForm(f => ({ ...f, plantCount: e.target.value }))}
+                            className="mt-1"
+                            placeholder="1"
+                          />
+                        </div>
                       </div>
                       <Button className="w-full" onClick={quickAddPlant} disabled={plantSubmitting}>Add Plant</Button>
                     </div>

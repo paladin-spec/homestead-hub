@@ -23,6 +23,8 @@ export async function POST(request: Request) {
         variety: body.variety ?? null,
         location: body.location ?? null,
         plantedDate: body.plantedDate ?? null,
+        stage: body.stage ?? "seeded",
+        plantCount: body.plantCount != null ? Number(body.plantCount) : 1,
         notes: body.notes ?? null,
       })
       .returning()
