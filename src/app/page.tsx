@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dialog"
 import { Sprout, Bird, Flame, Wrench, Home, Pencil, Check, X, Plus, Egg } from "lucide-react"
 import Link from "next/link"
+import DashboardSearch from "@/components/dashboard-search"
 
 interface HomesteadData {
   id: number
@@ -245,6 +246,8 @@ export default function DashboardPage() {
       </div>
 
       {/* Stats grid */}
+      <DashboardSearch />
+
       <div className="grid grid-cols-2 gap-3">
         <Link href="/plants">
           <Card className="hover:shadow-md transition-shadow cursor-pointer">

@@ -27,9 +27,11 @@ export default function AppSidebar() {
   return (
     <aside className="hidden md:flex flex-col w-60 border-r bg-sidebar shrink-0">
       {/* Brand */}
-      <div className="flex items-center gap-2 px-5 py-5 border-b">
-        <Home className="h-5 w-5 text-sidebar-primary" />
-        <span className="font-semibold text-sidebar-foreground text-sm">Homestead Manager</span>
+      <div className="border-b">
+        <Link href="/" className="flex items-center gap-2 px-5 py-5 hover:bg-sidebar-accent transition-colors">
+          <Home className="h-5 w-5 text-sidebar-primary" />
+          <span className="font-semibold text-sidebar-foreground text-sm">Homestead Manager</span>
+        </Link>
       </div>
 
       {/* Nav */}

@@ -34,10 +34,10 @@ export default function MobileNav() {
       <Button variant="ghost" size="icon" onClick={() => setOpen(!open)} className="shrink-0">
         {open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
-      <div className="flex items-center gap-2 flex-1">
+      <Link href="/" className="flex items-center gap-2 flex-1 hover:opacity-80 transition-opacity">
         <Home className="h-4 w-4" />
         <span className="font-semibold text-sm">Homestead Manager</span>
-      </div>
+      </Link>
       <ThemeToggle />
 
       {/* Dropdown nav */}
